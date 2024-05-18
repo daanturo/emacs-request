@@ -670,11 +670,12 @@ RESPONSE via ENCODING."
           (setq done-p t))))))
 
 ;;;###autoload
-(defun request-abort (response)
+(defun request-abort (response &optional silent)
   "Abort request for RESPONSE (the object returned by `request').
 Note that this function invoke ERROR and COMPLETE callbacks.
 Callbacks may not be called immediately but called later when
-associated process is exited."
+associated process is exited. If SILENT, then suppress echoing
+messages."
   (cl-symbol-macrolet ((buffer (request-response--buffer response))
                        (symbol-status (request-response-symbol-status response))
                        (done-p (request-response-done-p response)))
@@ -683,6 +684,11 @@ associated process is exited."
         (setq symbol-status 'abort)
         (setq done-p t)
         (when (process-live-p process)
+         (when silent
+           (add-function :around (process-sentinel process)
+                         (lambda (sentinel-func &rest sentinel-args)
+                           (let ((request-message-level -1))
+                             (apply sentinel-func sentinel-args)))))
           (funcall (request--choose-backend 'terminate-process) process))))))
 
 
